@@ -300,16 +300,34 @@ function handleAnswerSelection(selectedBtn) {
     }
 }
 
-function nextQuestion() {
+window.nextQuestion = function () {
     currentQuizIndex++;
-    loadPage('quiz');
+    const content = document.getElementById('app-content');
+    content.innerHTML = renderQuizPage();
+    initializeQuiz();
+    if (window.MathJax) {
+        MathJax.typesetPromise();
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function previousQuestion() {
+window.previousQuestion = function () {
     if (currentQuizIndex > 0) {
         currentQuizIndex--;
-        loadPage('quiz');
+        const content = document.getElementById('app-content');
+        content.innerHTML = renderQuizPage();
+        initializeQuiz();
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+}
+
+window.resetQuiz = function () {
+    currentQuizIndex = 0;
+    quizScore = 0;
+    answeredQuestions = [];
 }
 
 function renderQuizResults() {
@@ -395,7 +413,7 @@ function renderExamCards(exams) {
                 <span style="color: var(--text-muted); font-size: 0.9rem;">
                     ${exam.problems} câu • ${exam.difficulty}
                 </span>
-                <button class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="viewExam(${exam.id})">
+                <button class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="viewExam('${exam.id}')">
                     Xem đề →
                 </button>
             </div>
@@ -444,17 +462,125 @@ function filterExams(filter) {
     });
 }
 
-function viewExam(examId) {
-    const exam = examData.find(e => e.id === examId);
-    if (!exam) return;
+window.viewExam = function (examId) {
+    // Check if we have real exam content
+    // Convert ID to string to ensure matching (though examId passed in is already string due to template literal)
+    const realExam = typeof realExamContent !== 'undefined' ? realExamContent[examId] : null;
 
-    alert(`📝 Đề thi: ${exam.school} - ${exam.year}\n\n` +
-        `Trong phiên bản demo này, nội dung đề thi chi tiết sẽ được cập nhật sau.\n\n` +
-        `Thông tin đề thi:\n` +
-        `• Trường: ${exam.school}\n` +
-        `• Năm: ${exam.year}\n` +
-        `• Thời gian: ${exam.duration}\n` +
-        `• Số câu: ${exam.problems}\n` +
-        `• Độ khó: ${exam.difficulty}\n\n` +
-        `Bạn có thể thêm nội dung đề thi thực tế vào file data.js!`);
+    if (realExam) {
+        // Show real exam content
+        showRealExamContent(realExam);
+    } else {
+        // Show placeholder for exams without content
+        const exam = examData.find(e => String(e.id) === String(examId));
+        if (!exam) return;
+
+        alert(`📝 Đề thi: ${exam.school} - ${exam.year}\n\n` +
+            `Nội dung đề thi chi tiết đang được cập nhật.\n\n` +
+            `Thông tin đề thi:\n` +
+            `• Trường: ${exam.school}\n` +
+            `• Năm: ${exam.year}\n` +
+            `• Thời gian: ${exam.duration}\n` +
+            `• Số câu: ${exam.problems}\n` +
+            `• Độ khó: ${exam.difficulty}\n\n` +
+            `Hiện tại đã có đề thi TP.HCM 2024 và Hà Nội 2024 với nội dung đầy đủ!`);
+    }
 }
+
+function showRealExamContent(exam) {
+    const content = document.getElementById('app-content');
+    content.innerHTML = `
+        <div class="fade-in">
+            <div class="section-header">
+                <h2 class="section-title">${exam.title}</h2>
+                <p class="section-subtitle">${exam.school} • ${exam.date}</p>
+            </div>
+            
+            <div class="card" style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <strong>🏫 Trường:</strong> ${exam.school}<br>
+                        <strong>📅 Ngày thi:</strong> ${exam.date}<br>
+                        <strong>⏱️ Thời gian:</strong> ${exam.duration}
+                    </div>
+                    <div>
+                        <strong>📊 Tổng điểm:</strong> ${exam.totalPoints} điểm<br>
+                        <strong>📝 Số câu:</strong> ${exam.problems.length} câu<br>
+                        <strong>🎯 Năm:</strong> ${exam.year}
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn btn-secondary" onclick="loadPage('exams'); document.querySelector('[data-page=exams]').click();">
+                        ← Quay lại danh sách đề thi
+                    </button>
+                </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 2rem;">
+                ${exam.problems.map((problem, index) => `
+                    <div class="card exam-problem-card" id="problem-${index}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="color: var(--text-primary); margin: 0;">
+                                ${problem.title}
+                            </h3>
+                            <span style="background: var(--primary-gradient); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600;">
+                                ${problem.points} điểm
+                            </span>
+                        </div>
+                        
+                        <div class="exam-problem-content">
+                            ${problem.content}
+                        </div>
+                        
+                        <div style="margin-top: 1.5rem;">
+                            <button class="btn btn-primary" onclick="toggleSolution(${index})" id="solution-btn-${index}">
+                                💡 Xem lời giải
+                            </button>
+                        </div>
+                        
+                        <div class="exam-solution" id="solution-${index}" style="display: none; margin-top: 1.5rem; padding: 1.5rem; background: rgba(67, 233, 123, 0.1); border-left: 4px solid var(--success-color); border-radius: var(--radius-md);">
+                            ${problem.solution}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div style="margin-top: 2rem; text-align: center;">
+                <button class="btn btn-success" onclick="loadPage('exams'); document.querySelector('[data-page=exams]').click();">
+                    ← Quay lại danh sách đề thi
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Trigger MathJax rendering
+    if (window.MathJax) {
+        MathJax.typesetPromise();
+    }
+
+    // Smooth scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+window.toggleSolution = function (problemIndex) {
+    const solution = document.getElementById(`solution-${problemIndex}`);
+    const btn = document.getElementById(`solution-btn-${problemIndex}`);
+
+    if (solution.style.display === 'none') {
+        solution.style.display = 'block';
+        btn.textContent = '🔼 Ẩn lời giải';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+
+        // Trigger MathJax for solution
+        if (window.MathJax) {
+            MathJax.typesetPromise([solution]);
+        }
+    } else {
+        solution.style.display = 'none';
+        btn.textContent = '💡 Xem lời giải';
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+    }
+}
+

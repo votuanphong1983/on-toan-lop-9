@@ -582,7 +582,7 @@ const examData = [
         difficulty: 'Khó'
     },
     {
-        id: 7,
+        id: 'tphcm_2024',
         school: 'Sở GD&ĐT TP. Hồ Chí Minh',
         year: 2024,
         province: 'TP. Hồ Chí Minh',
@@ -592,7 +592,7 @@ const examData = [
         difficulty: 'Trung bình'
     },
     {
-        id: 8,
+        id: 'hanoi_2024',
         school: 'Sở GD&ĐT Hà Nội',
         year: 2024,
         province: 'Hà Nội',
